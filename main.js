@@ -6,7 +6,7 @@ var config = {
         default: 'arcade',
         arcade: {
             gravity: {y: 500},
-            debug: false
+            debug: true
         }
     },
     scene: {
@@ -22,7 +22,7 @@ var game = new Phaser.Game(config);
 var map;
 var player;
 var cursors;
-var groundLayer, coinLayer;
+var groundLayer, coinLayer, backgroundLayer, ladderLayer;
 var text;
 var score = 0;
 
@@ -32,7 +32,9 @@ function preload() {
     // tiles in spritesheet 
     this.load.spritesheet('pitfalltiles', 'assets/pitfalltiles.png', {frameWidth: 70, frameHeight: 70});
     // simple coin image
-    this.load.image('coin', 'assets/coinGold.png');
+    this.load.image('coin', 'assets/goldbar.png');
+
+    this.load.spritesheet('ladder', 'assets/pitfalltiles.png', {frameWidth: 70, frameHeight: 70});
     // player animations
     this.load.atlas('player', 'assets/playertest.png', 'assets/player.json');
 }
@@ -54,17 +56,24 @@ function create() {
     // add coins as tiles
     coinLayer = map.createDynamicLayer('Coins', coinTiles, 0, 0);
 
+    var backgroundTiles = groundTiles;
+    backgroundLayer = map.createDynamicLayer('Background', backgroundTiles, 0, 0);
+
+    var LadderTiles = groundTiles;
+    ladderLayer = map.createDynamicLayer('Ladder', LadderTiles, 0, 0);
+
     // set the boundaries of our game world
     this.physics.world.bounds.width = groundLayer.width;
     this.physics.world.bounds.height = groundLayer.height;
 
     // create the player sprite    
-    player = this.physics.add.sprite(10, 450, 'player');
+    player = this.physics.add.sprite(10, 200, 'player');
     player.setBounce(0.2); // our player will bounce from items
     player.setCollideWorldBounds(true); // don't go out of the map    
     
     // small fix to our player images, we resize the physics body object slightly
     player.body.setSize(player.width, player.height-8);
+    player.setScale(.9);
     
     // player will collide with the level tiles 
     this.physics.add.collider(groundLayer, player);
@@ -73,6 +82,9 @@ function create() {
     // when the player overlaps with a tile with index 17, collectCoin 
     // will be called    
     this.physics.add.overlap(player, coinLayer);
+
+    ladderLayer.setTileIndexCallback(51, ladderClimb, this);
+    this.physics.add.overlap(player, ladderLayer);
 
     // player walk animation
     this.anims.create({
@@ -113,6 +125,13 @@ function collectCoin(sprite, tile) {
     coinLayer.removeTileAt(tile.x, tile.y); // remove the tile/coin
     score++; // add 10 points to the score
     text.setText(score); // set the text to show the current score
+    return false;
+}
+
+function ladderClimb(sprite, tile) {
+    ladderLayer.removeTileAt(tile.x, tile.y);
+    score++;
+    text.setText(score);
     return false;
 }
 
