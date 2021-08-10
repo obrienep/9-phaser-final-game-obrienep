@@ -281,7 +281,7 @@ function update(time, delta) {
     }
 
     if (scorpion.stepLimit < 100) {
-        scorpion.body.velocity.x = 3 * direction;
+        scorpion.body.velocity.x = 175 * direction;
         scorpion.stepLimit++;
         
     } else {
