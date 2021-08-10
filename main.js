@@ -6,7 +6,7 @@ var config = {
         default: 'arcade',
         arcade: {
             gravity: {y: 500},
-            debug: true
+            debug: false
         }
     },
     scene: {
@@ -21,14 +21,17 @@ var game = new Phaser.Game(config);
 
 var rope;
 var map;
-var player, scorpion;
+var player, scorpion, death;
 var cursors;
 var groundLayer, coinLayer, backgroundLayer, ladderLayer, holeLayer;
 var text;
 var score = 0;
 var onLadder = false;
+var onRope = false;
 var stepLimit = 100;
+var ropeCount = 300;
 var direction = 1;
+var alive = true;
 
 function preload() {
     // map made with Tiled in JSON format
@@ -43,6 +46,9 @@ function preload() {
     this.load.atlas('player', 'assets/playertest.png', 'assets/player.json');
     this.load.image('background', 'assets/background.png');
     this.load.spritesheet('scorpion', 'assets/scorpion.png', {frameWidth: 70, frameHeight: 70});
+    this.load.spritesheet('rope', 'assets/ropesheet.png', {frameWidth: 175, frameHeight: 120});
+    this.load.spritesheet('ropeuse', 'assets/ropesheet2.png', {frameWidth: 175, frameHeight: 120});
+    this.load.image('death', 'assets/death.png');
 }
 
 function create() {
@@ -80,7 +86,8 @@ function create() {
     // create the player sprite    
     player = this.physics.add.sprite(10, 200, 'player');
     player.setBounce(0); // our player will bounce from items
-    player.setCollideWorldBounds(true); // don't go out of the map    
+    player.setCollideWorldBounds(true); // don't go out of the map
+    player.alive = true;    
     
     // small fix to our player images, we resize the physics body object slightly
     player.body.setSize(player.width, player.height-8);
@@ -98,13 +105,25 @@ function create() {
 
     this.physics.add.overlap(player, ladderLayer);
 
-    scorpion = this.physics.add.sprite(100, 200, 'scorpion');
+    //creation of scorpion
+    scorpion = this.physics.add.sprite(1000, 535, 'scorpion');
     scorpion.setBounce(0);
     scorpion.setCollideWorldBounds(true);
     scorpion.setScale(.7);
     scorpion.stepLimit = 0;
     this.physics.add.overlap(player, scorpion, killPlayer);
     this.physics.add.collider(groundLayer, scorpion);
+
+    //creation of rope
+    rope = this.physics.add.sprite(1200, 120, 'rope');
+    rope.body.setAllowGravity(false);
+    rope.setScale(2);
+    this.physics.add.overlap(player, rope, ropeSwing);
+
+    //creation of death
+    death = this.physics.add.sprite(0, 0, 'death');
+    death.body.setAllowGravity(false);
+    death.visible = false;
 
 
     // player walk animation
@@ -134,7 +153,13 @@ function create() {
     });
     this.anims.create({
         key:'scorpionwalk',
-        frames: this.anims.generateFrameNames('scorpion', {prefix: 'sprite', start:1, end: 2, zeroPad: 2}),
+        frames: this.anims.generateFrameNames('scorpion'),
+        frameRate: 5,
+        repeat: -1,
+    });
+    this.anims.create({
+        key:'ropeswing',
+        frames: this.anims.generateFrameNames('rope'),
         frameRate: 5,
         repeat: -1,
     });
@@ -169,6 +194,19 @@ function collectCoin(sprite, tile) {
     return false;
 }
 
+function ropeSwing(player, tile) {
+   // player.visible = false;
+    var swingdirection = player.body.velocity.x / player.body.velocity.x;
+    if (player.body.velocity.x < 1) {
+        swingdirection * -1;
+    }
+    player.body.setAllowGravity(false);
+    player.body.setVelocityY(0);
+    player.body.x = player.body.x + (240 * swingdirection);
+    //player.visible = true;
+    //player.setAllowGravity(true);
+}
+
 function ladderClimb(sprite, tile) {
     if (cursors.up.isDown)
     {
@@ -183,14 +221,30 @@ function ladderClimb(sprite, tile) {
 }
 
 function killPlayer(sprite, tile) {
-    //coinLayer.removeTileAt(tile.x, tile.y); // remove the tile/coin
-    score++; // add 10 points to the score
-    text.setText(score); // set the text to show the current score
+    player.alive = false;
+    death.x = player.x;
+    death.y = player.y;
+    death.visible = true;
+    player.visible = false;
+    //score++; // add 10 points to the score
+    //text.setText(score); // set the text to show the current score
     return false;
 }
 
+ function restartGame() 
+{
+    //var count = 0;
+   // this.gameOverText.visible = true
+    this.scene.restart();
+}
+
 function update(time, delta) {
+
+    var swingdirection = ((player.body.velocity.x) / (player.body.velocity.x));
     
+    scorpion.anims.play('scorpionwalk', true);
+    rope.anims.play('ropeswing', true)
+
     if (cursors.left.isDown && (onLadder == false))
     {
         player.body.setVelocityX(-200);
@@ -236,6 +290,20 @@ function update(time, delta) {
         scorpion.flipX = !scorpion.flipX;
     }
 
+    if (onRope == true) {
+        player.body.setVelocityX(170 * swingdirection);
+    }
+         else {
+            player.visible = true;
+            player.body.setAllowGravity(true);
+         }
+
+    if (!player.alive) {
+        this.scene.restart();
+
+    }
+
+    
 
 
 }
